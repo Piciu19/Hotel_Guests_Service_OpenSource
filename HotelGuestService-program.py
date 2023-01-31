@@ -8,8 +8,8 @@ def addGuest():
     guestData = {}
     while True:
         try:
-            guestData["Name"] = input("Enter guest name: ")
-            if (guestData["Name"].isdigit() == True):
+            guestData["name"] = input("Enter guest name: ")
+            if (guestData["name"].isdigit() == True):
                 raise Exception
             break
         except Exception:
@@ -18,8 +18,8 @@ def addGuest():
         
     while True:
         try:
-            guestData["Last name"] = input("Enter guest last name: ")
-            if (guestData["Last name"].isdigit() == True):
+            guestData["last name"] = input("Enter guest last name: ")
+            if (guestData["last name"].isdigit() == True):
                 raise Exception
             break
         except Exception:
@@ -28,7 +28,7 @@ def addGuest():
     
     while True:
         try:
-            guestData["Phone"] = int(input("Enter guest phone: "))
+            guestData["phone"] = int(input("Enter guest phone: "))
             break
         except Exception:
             print("Entred data is incorrect. Try again")
@@ -36,7 +36,7 @@ def addGuest():
     
     while True:
         try:
-            guestData["Peoples in the room"] = int(input("Enter number of peoples in the room: "))
+            guestData["number of guests"] = int(input("Enter number of number of guests: "))
             break
         except Exception:
             print("Entred data is incorrect. Try again")
@@ -44,7 +44,7 @@ def addGuest():
     
     while True:
         try:
-            guestData["Number of the room"] = int(input("Enter number of room: "))
+            guestData["room number"] = int(input("Enter number of room: "))
             break
         except Exception:
             print("Entred data is incorrect. Try again")
@@ -82,13 +82,13 @@ def viewGuestsList():
         jsonF = json.load(f)
         i = 0
         for guests in jsonF:
-            name = guests["Name"]
-            lastName = guests["Last name"]
-            phone = guests["Phone"]
-            peoplesInRoom = guests["Peoples in the room"]
-            numOfRoom = guests["Number of the room"]
+            name = guests["name"]
+            lastname = guests["last name"]
+            phone = guests["phone"]
+            peoplesInRoom = guests["number of guests"]
+            numOfRoom = guests["room number"]
             print(f"Index : {i}")
-            print(f"Name : {name} | " + f"Last name : {lastName} | " + f"Phone : {phone} | " + f"Peoples in the room : {peoplesInRoom} | " + f"Number of the room : {numOfRoom}")
+            print(f"name : {name} | " + f"last name : {lastname} | " + f"phone : {phone} | " + f"number of guests : {peoplesInRoom} | " + f"room number : {numOfRoom}")
             print()
 
             i = i+1
