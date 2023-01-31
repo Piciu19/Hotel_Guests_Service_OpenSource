@@ -1,6 +1,8 @@
 import json
 #Functions
-def modeChoiceCheck(choice):
+
+global choice
+def modeChoiceCheck():
     if (choice != 1 and choice != 2 and choice != 3 and choice != 4):
         raise Exception 
 
@@ -131,9 +133,8 @@ def choicesFunc():
     print("[3] - View guests list")
     print("[4] - Close program")
     try:
-        global choice
         choice = int(input("Enter number: "))
-        modeChoiceCheck(choice)
+        modeChoiceCheck()
     except Exception:
         print("Entred data is incorrect")
 
@@ -151,4 +152,4 @@ while True:
     elif (choice == 4):
         quit()
     else:
-        print("Entred data is incorrect. try again")    
+        print("Entred data is incorrect. try again")
