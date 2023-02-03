@@ -1,10 +1,72 @@
 import json
+import psycopg2
+from configparser import ConfigParser
+import os
 
 # Functions
-def modeChoiceCheck():
-    if choice != 1 and choice != 2 and choice != 3 and choice != 4:
-        raise Exception
+global isFirstStart
+def postgresInfo():
+    cfgObject = ConfigParser()
 
+    global hostname
+    global db
+    global username
+    global pwd
+    global port
+
+    try:
+        if not os.path.exists('config.cfg'):
+            print('Please set up informations for PostgreSQL server:')
+            hostname = str(input('Enter hostname: '))
+            db = str(input('Enter database name: '))
+            username = str(input('Enter username: '))
+            pwd = str(input('Enter password: '))
+            port = str(input('Enter port:'))
+
+            cfgObject['PostgresServerConnInfo'] = {}
+            config = cfgObject['PostgresServerConnInfo']
+            config['hostname'] = hostname
+            config['db'] = db
+            config['username'] = username
+            config['pwd'] = pwd
+            config['port'] = port
+
+            with open('config.cfg', "w") as f:
+                cfgObject.write(f)
+        else:
+            cfgObject.read('config.cfg')
+            postgresinfo = cfgObject['PostgresServerConnInfo']
+
+            hostname = postgresinfo['hostname']
+            db = postgresinfo['db']
+            username = postgresinfo['username']
+            pwd = postgresinfo['pwd']
+            port = postgresinfo['port']
+
+
+    except Exception as error:
+        print(error)
+def postgresConnection():
+    conn = None
+    cur = None
+    try:
+        conn = psycopg2.connect(
+            host = hostname,
+            dbname = db,
+            user = username,
+            password = pwd,
+            port = port)
+
+        cur = conn.cursor()
+
+        getScript = '''SELECT * FROM "Hotel_guests_list"."Guests"'''
+        cur.execute(getScript)
+
+    except Exception as error:
+        print(error)
+
+    cur.close()
+    conn.close()
 
 def addGuest():
     global sure
@@ -82,21 +144,7 @@ def addGuest():
 
 
 def viewGuestsList():
-    with open("guests_list.json") as f:
-        jsonF = json.load(f)
-        i = 0
-        for guests in jsonF:
-            name = guests["name"]
-            lastname = guests["last name"]
-            phone = guests["phone"]
-            peoplesInRoom = guests["number of guests"]
-            numOfRoom = guests["room number"]
-            print(f"Index : {i}")
-            print(
-                f"name : {name} | " + f"last name : {lastname} | " + f"phone : {phone} | " + f"number of guests : {peoplesInRoom} | " + f"room number : {numOfRoom}")
-            print()
-
-            i = i + 1
+    pass
 
 
 def deleteGuest():
@@ -128,6 +176,9 @@ def deleteGuest():
         with open("guests_list.json", "w") as f:
             json.dump(new_data, f, indent=4)
 
+def modeChoiceCheck():
+    if choice != 1 and choice != 2 and choice != 3 and choice != 4:
+        raise Exception
 
 def choicesFunc():
     global choice
@@ -135,7 +186,7 @@ def choicesFunc():
     print("[1] - Add guest")
     print("[2] - Delete guest")
     print("[3] - View guests list")
-    print("[4] - Close program")
+    print("[4] - Change postgres info")
     try:
         choice = int(input("Enter number: "))
         modeChoiceCheck()
@@ -145,6 +196,8 @@ def choicesFunc():
 
 # Program
 while True:
+    postgresInfo()
+    print(hostname, db, username, pwd, port)
     choicesFunc()
     print()
 
@@ -155,6 +208,7 @@ while True:
     elif choice == 3:
         viewGuestsList()
     elif choice == 4:
-        quit()
+        os.remove('config.cfg')
+        postgresInfo()
     else:
         print("Entered data is incorrect. try again")
