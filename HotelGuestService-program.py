@@ -1,7 +1,7 @@
-import json
-import psycopg2
 from configparser import ConfigParser
 import os
+import postgresConnectionLibrary
+import maskpass
 
 hostname = None
 db = None
@@ -21,7 +21,7 @@ def postgresServerConfiguration():
             hostname = str(input('Enter hostname: '))
             db = str(input('Enter database name: '))
             username = str(input('Enter username: '))
-            pwd = str(input('Enter password: '))
+            pwd = maskpass.askpass(prompt='Enter password: ', mask='*')
             port = str(input('Enter port:'))
 
             cfgObject['PostgresServerConnInfo'] = {}
@@ -46,7 +46,9 @@ def postgresServerConfiguration():
                                         number_of_guests integer,
                                         room_number integer
                                     )'''
-            postgresConnection(createSchemaScript, createTableScript)
+            postgresConnection = postgresConnectionLibrary.PostgressConnection(hostname, db, username, pwd, port)
+            postgresConnection.schemaTable(createSchemaScript, createTableScript)
+            del postgresConnection
         else:
             cfgObject.read('config.cfg')
             postgresinfo = cfgObject['PostgresServerConnInfo']
@@ -59,26 +61,6 @@ def postgresServerConfiguration():
 
     except Exception as error:
         print(error)
-
-def postgresConnectionAdd(addGuestExecute, addGuestExecuteValue):
-    try:
-        conn = psycopg2.connect(
-            host=hostname,
-            dbname=db,
-            user=username,
-            password=pwd,
-            port=port)
-
-        cur = conn.cursor()
-
-        if addGuestExecute != None:
-            cur.execute(addGuestExecute, addGuestExecuteValue)
-            conn.commit()
-    except Exception as error:
-        print(error)
-    finally:
-        cur.close()
-        conn.close()
 
 def addGuest():
     while True:
@@ -142,43 +124,21 @@ def addGuest():
     if sure == 1:
         addGuestScript = f'INSERT INTO hotel.guests (name,last_name,phone,number_of_guests,room_number) VALUES (%s,%s,%s,%s,%s)'
         addGuestValue = (name,lastName,phone,numberOfGuests,roomNumber)
-        postgresConnection(addGuestScript, addGuestValue)
+        postgresConnection.add(addGuestScript,addGuestValue)
     elif sure == 0:
         print("Guest not added")
 
 
 def viewGuestsList():
-    pass
-
+    fetchScript = 'SELECT * FROM hotel.guests'
+    postgresConnection.view(fetchScript)
 
 def deleteGuest():
     viewGuestsList()
-    new_data = []
-    with open("guests_list.json", "r") as f:
-        temp = json.load(f)
-        data_length = len(temp)
-    print("Which guest number do you like to delete?")
-    while True:
-        try:
-            deleteOption = input(f"Select a number 0-{data_length - 1}: ")
-            delOptRange = range(0, int(data_length))
-            if int(deleteOption) in delOptRange:
-                print("Guest successfully deleted")
-                break
-            else:
-                print("Entered data is incorrect. Try again")
-        except Exception:
-            print("That not a number")
-    i = 0
-    for entry in temp:
-        if i == int(deleteOption):
-            pass
-            i = i + 1
-        else:
-            new_data.append(entry)
-            i = i + 1
-        with open("guests_list.json", "w") as f:
-            json.dump(new_data, f, indent=4)
+    id = input('Enter guest id you want to delete: ')
+    deleteScript = 'DELETE FROM hotel.guests WHERE id =%s'
+    deleteID = (id)
+    postgresConnection.delete(deleteScript,deleteID)
 
 def modeChoiceCheck():
     if choice != 1 and choice != 2 and choice != 3 and choice != 4:
@@ -201,7 +161,7 @@ def choicesFunc():
 # Program
 while True:
     postgresServerConfiguration()
-    print(hostname, db, username, pwd, port)
+    postgresConnection = postgresConnectionLibrary.PostgressConnection(hostname, db, username, pwd, port)
     choicesFunc()
     print()
 
@@ -214,8 +174,9 @@ while True:
     elif choice == 4:
         schemaDrop = 'DROP SCHEMA IF EXISTS hotel;'
         tableDrop = 'DROP TABLE IF EXISTS hotel.guests;'
-        postgresConnection(tableDrop, schemaDrop)
+        postgresConnection.schemaTable(tableDrop, schemaDrop)
         os.remove('config.cfg')
+        del postgresConnection
         postgresServerConfiguration()
     else:
         print("Entered data is incorrect. try again")
