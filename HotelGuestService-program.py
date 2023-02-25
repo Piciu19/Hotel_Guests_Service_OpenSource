@@ -3,17 +3,18 @@ import psycopg2
 from configparser import ConfigParser
 import os
 
-# Functions
-global isFirstStart
-def postgresInfo():
-    cfgObject = ConfigParser()
-
+hostname = None
+db = None
+username = None
+pwd = None
+port = None
+def postgresServerConfiguration():
     global hostname
     global db
     global username
     global pwd
     global port
-
+    cfgObject = ConfigParser()
     try:
         if not os.path.exists('config.cfg'):
             print('Please set up informations for PostgreSQL server:')
@@ -33,6 +34,19 @@ def postgresInfo():
 
             with open('config.cfg', "w") as f:
                 cfgObject.write(f)
+
+            createSchemaScript = f'CREATE SCHEMA IF NOT EXISTS hotel AUTHORIZATION {username};'
+
+            createTableScript = '''CREATE TABLE IF NOT EXISTS hotel.guests
+                                    (
+                                        id serial PRIMARY KEY,
+                                        name text,
+                                        last_name text,
+                                        phone integer,
+                                        number_of_guests integer,
+                                        room_number integer
+                                    )'''
+            postgresConnection(createSchemaScript, createTableScript)
         else:
             cfgObject.read('config.cfg')
             postgresinfo = cfgObject['PostgresServerConnInfo']
@@ -43,38 +57,34 @@ def postgresInfo():
             pwd = postgresinfo['pwd']
             port = postgresinfo['port']
 
-
     except Exception as error:
         print(error)
-def postgresConnection():
-    conn = None
-    cur = None
+
+def postgresConnectionAdd(addGuestExecute, addGuestExecuteValue):
     try:
         conn = psycopg2.connect(
-            host = hostname,
-            dbname = db,
-            user = username,
-            password = pwd,
-            port = port)
+            host=hostname,
+            dbname=db,
+            user=username,
+            password=pwd,
+            port=port)
 
         cur = conn.cursor()
 
-        getScript = '''SELECT * FROM "Hotel_guests_list"."Guests"'''
-        cur.execute(getScript)
-
+        if addGuestExecute != None:
+            cur.execute(addGuestExecute, addGuestExecuteValue)
+            conn.commit()
     except Exception as error:
         print(error)
-
-    cur.close()
-    conn.close()
+    finally:
+        cur.close()
+        conn.close()
 
 def addGuest():
-    global sure
-    guestData = {}
     while True:
         try:
-            guestData["name"] = input("Enter guest name: ")
-            if guestData["name"].isdigit() == True:
+            name = input("Enter guest name: ")
+            if name.isdigit() == True:
                 raise Exception
             break
         except Exception:
@@ -83,8 +93,8 @@ def addGuest():
 
     while True:
         try:
-            guestData["last name"] = input("Enter guest last name: ")
-            if guestData["last name"].isdigit() == True:
+            lastName = input("Enter guest last name: ")
+            if lastName.isdigit() == True:
                 raise Exception
             break
         except Exception:
@@ -93,7 +103,7 @@ def addGuest():
 
     while True:
         try:
-            guestData["phone"] = int(input("Enter guest phone: "))
+            phone = int(input("Enter guest phone: "))
             break
         except Exception:
             print("Entered data is incorrect. Try again")
@@ -101,7 +111,7 @@ def addGuest():
 
     while True:
         try:
-            guestData["number of guests"] = int(input("Enter number of guests: "))
+            numberOfGuests = int(input("Enter number of guests: "))
             break
         except Exception:
             print("Entered data is incorrect. Try again")
@@ -109,13 +119,13 @@ def addGuest():
 
     while True:
         try:
-            guestData["room number"] = int(input("Enter number of room: "))
+            roomNumber = int(input("Enter number of room: "))
             break
         except Exception:
             print("Entered data is incorrect. Try again")
             continue
 
-    print(guestData)
+    print(f'Name : {name}\nLast Name : {lastName}\nPhone : {phone}\nNumber of guests : {numberOfGuests}\nRoom number : {roomNumber}')
 
     print("[1] - yes")
     print("[0] - no")
@@ -130,15 +140,9 @@ def addGuest():
             continue
 
     if sure == 1:
-        try:
-            with open("guests_list.json", "r") as f:
-                temp = json.load(f)
-            temp.append(guestData)
-            with open("guests_list.json", "w") as f:
-                json.dump(temp, f, indent=4)
-            print("Guest successful added")
-        except Exception:
-            print("Problem with add guest, try again")
+        addGuestScript = f'INSERT INTO hotel.guests (name,last_name,phone,number_of_guests,room_number) VALUES (%s,%s,%s,%s,%s)'
+        addGuestValue = (name,lastName,phone,numberOfGuests,roomNumber)
+        postgresConnection(addGuestScript, addGuestValue)
     elif sure == 0:
         print("Guest not added")
 
@@ -196,7 +200,7 @@ def choicesFunc():
 
 # Program
 while True:
-    postgresInfo()
+    postgresServerConfiguration()
     print(hostname, db, username, pwd, port)
     choicesFunc()
     print()
@@ -208,7 +212,10 @@ while True:
     elif choice == 3:
         viewGuestsList()
     elif choice == 4:
+        schemaDrop = 'DROP SCHEMA IF EXISTS hotel;'
+        tableDrop = 'DROP TABLE IF EXISTS hotel.guests;'
+        postgresConnection(tableDrop, schemaDrop)
         os.remove('config.cfg')
-        postgresInfo()
+        postgresServerConfiguration()
     else:
         print("Entered data is incorrect. try again")
