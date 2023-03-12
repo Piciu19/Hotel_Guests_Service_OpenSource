@@ -2,6 +2,9 @@ from configparser import ConfigParser
 import os
 import postgresConnectionLibrary
 import maskpass
+import logging
+import datetime
+import time
 
 hostname = None
 db = None
@@ -17,7 +20,10 @@ def postgresServerConfiguration():
     cfgObject = ConfigParser()
     try:
         if not os.path.exists('config.cfg'):
-            print('Please set up informations for PostgreSQL server:')
+            logging.info('execute pre-configuration')
+            print('Pre-configuration for postgres database')
+            print('After you enter data program will create schema and table in database')
+            print()
             hostname = str(input('Enter hostname: '))
             db = str(input('Enter database name: '))
             username = str(input('Enter username: '))
@@ -32,8 +38,16 @@ def postgresServerConfiguration():
             config['pwd'] = pwd
             config['port'] = port
 
-            with open('config.cfg', "w") as f:
-                cfgObject.write(f)
+            try:
+                with open('config.cfg', "w") as f:
+                    print()
+                    print(f'hostname : {hostname}\ndb name : {db}\nusername : {username}\npassword : {pwd}\nport : {port}')
+                    print('If entered values are incorrect enter 4')
+                    cfgObject.write(f)
+                    logging.info(f'New config created (hostname : {hostname}, db name : {db}, username : {username}, password : {pwd}, port : {port})')
+            except Exception as error:
+                logging.error(error)
+                print(error)
 
             createSchemaScript = f'CREATE SCHEMA IF NOT EXISTS hotel AUTHORIZATION {username};'
 
@@ -49,6 +63,7 @@ def postgresServerConfiguration():
             postgresConnection = postgresConnectionLibrary.PostgressConnection(hostname, db, username, pwd, port)
             postgresConnection.schemaTable(createSchemaScript, createTableScript)
             del postgresConnection
+            logging.info(f'New schema and table created in database {db}')
         else:
             cfgObject.read('config.cfg')
             postgresinfo = cfgObject['PostgresServerConnInfo']
@@ -58,9 +73,10 @@ def postgresServerConfiguration():
             username = postgresinfo['username']
             pwd = postgresinfo['pwd']
             port = postgresinfo['port']
+            logging.info('Config read successfully')
 
     except Exception as error:
-        print(error)
+        logging.error(error)
 
 def addGuest():
     while True:
@@ -122,23 +138,39 @@ def addGuest():
             continue
 
     if sure == 1:
-        addGuestScript = f'INSERT INTO hotel.guests (name,last_name,phone,number_of_guests,room_number) VALUES (%s,%s,%s,%s,%s)'
-        addGuestValue = (name,lastName,phone,numberOfGuests,roomNumber)
-        postgresConnection.add(addGuestScript,addGuestValue)
+        try:
+            addGuestScript = f'INSERT INTO hotel.guests (name,last_name,phone,number_of_guests,room_number) VALUES (%s,%s,%s,%s,%s)'
+            addGuestValue = (name,lastName,phone,numberOfGuests,roomNumber)
+            postgresConnection.add(addGuestScript,addGuestValue)
+            logging.info('Added new guest\nName : {name}\nLast Name : {lastName}\nPhone : {phone}\nNumber of guests : {numberOfGuests}\nRoom number : {roomNumber}')
+        except Exception as error:
+            print(error)
+            logging.error(error)
     elif sure == 0:
         print("Guest not added")
+        logging.info('Guest added canceled')
 
 
 def viewGuestsList():
-    fetchScript = 'SELECT * FROM hotel.guests'
-    postgresConnection.view(fetchScript)
+    try:
+        fetchScript = 'SELECT * FROM hotel.guests'
+        postgresConnection.view(fetchScript)
+        logging.info('Guests list fetch')
+    except Exception as error:
+        print(error)
+        logging.error(error)
 
 def deleteGuest():
-    viewGuestsList()
-    id = input('Enter guest id you want to delete: ')
-    deleteScript = 'DELETE FROM hotel.guests WHERE id =%s'
-    deleteID = (id)
-    postgresConnection.delete(deleteScript,deleteID)
+    try:
+        viewGuestsList()
+        id = input('Enter guest id you want to delete: ')
+        deleteScript = 'DELETE FROM hotel.guests WHERE id =%s'
+        deleteID = (id)
+        postgresConnection.delete(deleteScript,deleteID)
+        logging.info('Deleted guest')
+    except Exception as error:
+        print(error)
+        logging.error(error)
 
 def modeChoiceCheck():
     if choice != 1 and choice != 2 and choice != 3 and choice != 4:
@@ -159,6 +191,7 @@ def choicesFunc():
 
 
 # Program
+logging.basicConfig(filename=f'.log', filemode='a', format='[%(asctime)s %(levelname)s] %(message)s', level=logging.INFO)
 while True:
     postgresServerConfiguration()
     postgresConnection = postgresConnectionLibrary.PostgressConnection(hostname, db, username, pwd, port)
